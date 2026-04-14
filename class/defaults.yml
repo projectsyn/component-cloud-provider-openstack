@@ -1,0 +1,5 @@
+parameters:
+  cloud_provider_openstack:
+    =_metadata:
+      multi_tenant: true
+    namespace: syn-cloud-provider-openstack

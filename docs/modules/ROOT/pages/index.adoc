@@ -1,0 +1,5 @@
+= Cloud Provider OpenStack
+
+cloud-provider-openstack is a Commodore component to manage Cloud Provider OpenStack.
+
+See the xref:references/parameters.adoc[parameters] reference for further details.
