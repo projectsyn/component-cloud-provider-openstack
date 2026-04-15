@@ -9,11 +9,553 @@ type:: string
 default:: `syn-cloud-provider-openstack`
 
 The namespace in which to deploy this component.
+Unless `kube-system` is chosen, the component will take ownership of the namespace.
 
+NOTE: The CCM DaemonSet uses `hostNetwork: true`.
+On clusters that enforce https://kubernetes.io/docs/concepts/security/pod-security-standards/[Pod Security Standards], the namespace must be labeled `pod-security.kubernetes.io/enforce: privileged`.
 
-== Example
+== `charts`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Helm chart sources and versions for both the CCM and Cinder CSI charts.
+
+== `images`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Container images for the CCM and Cinder CSI plugin.
+Each image is specified with separate `registry`, `repository`, and `tag` fields.
+
+== `cloud_config_secret_name`
+
+[horizontal]
+type:: string
+default:: `cloud-config`
+
+Name of the Kubernetes Secret which holds the rendered `cloud.conf`.
+The component renders and manages this Secret itself; both charts' own Secret rendering is disabled via `secret.create: false` in `ccm.helm_values` and `csi.helm_values`.
+
+== `cloud_conf`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Structured input for the rendered `cloud.conf` INI file.
+Each sub-section maps to an INI section.
+Both the CCM and CSI driver consume this shared Secret; empty sections are suppressed.
+
+[IMPORTANT]
+====
+Keys inside every `cloud_conf.*` dictionary must use the same *kebab-case* names as the upstream `cloud.conf` format (e.g. `auth-url`, `floating-network-id`).
+The component passes keys through to the INI file as-is.
+====
+
+Render behavior:
+
+* `null` values are dropped (no line emitted).
+* Boolean values render as lowercase `true`/`false`.
+* List values render as multiple lines with the same key (used for multi-value keys such as `public-network-name`).
+* Empty sections are suppressed entirely.
+
+Sensitive fields (passwords, application credential secrets, tokens) can be supplied as Vault references directly in `cloud_conf.global`:
 
 [source,yaml]
 ----
-namespace: example-namespace
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      global:
+        auth-url: https://identity.api.example.cloud/v3
+        application-credential-id: d1a2b3c4e5f6a7b8c9d0e1f2a3b4c5d6
+        application-credential-secret: '?{vaultkv:${cluster:tenant}/${cluster:name}/openstack/application-credential-secret}'
+----
+
+=== `cloud_conf.global`
+
+Maps to `[Global]`.
+Holds Keystone authentication endpoint, identifiers, and credentials.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md#global[upstream CCM documentation] for the full list of supported keys.
+
+=== `cloud_conf.networking`
+
+Maps to `[Networking]`.
+Controls how the CCM discovers node addresses.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md#networking[upstream CCM documentation] for all supported keys.
+
+Multi-value keys (e.g. `public-network-name`) are specified as lists:
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      networking:
+        public-network-name:
+          - public
+          - public-v6
+        internal-network-name:
+          - internal
+----
+
+=== `cloud_conf.load_balancer`
+
+Maps to `[LoadBalancer]`.
+Configures the Octavia integration used by the CCM `service` controller.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md#load-balancer[upstream CCM documentation] for all supported keys.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      load_balancer:
+        manage-security-groups: true
+        lb-provider: ovn
+        lb-method: SOURCE_IP_PORT
+        floating-network-id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+----
+
+=== `cloud_conf.load_balancer_classes`
+
+[horizontal]
+type:: dictionary
+default:: `{}`
+
+Maps to one `[LoadBalancerClass "<name>"]` INI section per dictionary key.
+Each value is itself a dictionary of kebab-case keys following the same rendering rules.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md#load-balancer[upstream CCM documentation] for supported keys per class.
+
+[IMPORTANT]
+====
+The upstream Helm chart's `cloudConfig` template helper does *not* support `[LoadBalancerClass "<name>"]` sub-sections.
+This component renders `cloud.conf` itself, so LoadBalancerClass definitions configured here work as documented by cloud-provider-openstack.
+====
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      load_balancer_classes:
+        public:
+          floating-network-id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        internal:
+          subnet-id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+----
+
+Renders to:
+
+[source,ini]
+----
+[LoadBalancerClass "public"]
+floating-network-id=a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+[LoadBalancerClass "internal"]
+subnet-id=b2c3d4e5-f6a7-8901-bcde-f12345678901
+----
+
+To use a named class on a Service, set the `loadbalancer.openstack.org/class` annotation.
+
+=== `cloud_conf.block_storage`
+
+Maps to `[BlockStorage]`.
+Consumed by the Cinder CSI driver.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md#block-storage[upstream CSI documentation] for all supported keys.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      block_storage:
+        ignore-volume-az: true
+        rescan-on-resize: true
+----
+
+=== `cloud_conf.metadata`
+
+Maps to `[Metadata]`.
+Controls how the CCM and CSI driver retrieve instance metadata.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      metadata:
+        search-order: configDrive
+----
+
+=== `cloud_conf.route`
+
+Maps to `[Route]`.
+Only needed when the `route` controller is enabled in `ccm.enabled_controllers`.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md#route[upstream CCM documentation] for details.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      route:
+        router-id: c3d4e5f6-a7b8-9012-cdef-123456789012
+----
+
+== CCM parameters
+
+Parameters under the `ccm` key configure the OpenStack Cloud Controller Manager.
+
+=== `ccm.cluster_name`
+
+[horizontal]
+type:: string
+default:: `${cluster:name}`
+
+The cluster name passed to the CCM.
+OpenStack uses this value to tag resources (e.g. load balancers) so they can be cleaned up if the cluster is deleted.
+
+=== `ccm.service_account_name`
+
+[horizontal]
+type:: string
+default:: `cloud-controller-manager`
+
+Name of the Kubernetes ServiceAccount used by the CCM DaemonSet.
+
+=== `ccm.resources`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Resource requests and limits for the CCM container.
+
+=== `ccm.enabled_controllers`
+
+[horizontal]
+type:: list
+default:: `[cloud-node, cloud-node-lifecycle, service]`
+
+List of CCM sub-controllers to enable.
+
+[cols="2,5,1"]
+|===
+|Controller |Purpose |Default
+
+|`cloud-node`
+|Initializes nodes with OpenStack metadata (ProviderID, availability zone, addresses, instance type)
+|Enabled
+
+|`cloud-node-lifecycle`
+|Monitors whether the underlying OpenStack instance still exists; removes the Node if the VM is deleted
+|Enabled
+
+|`service`
+|Manages LoadBalancer-type Services via Octavia
+|Enabled
+
+|`route`
+|Manages pod network routes via a Neutron router. Requires `router-id` in `cloud_conf.route`.
+|Disabled
+|===
+
+=== `ccm.log_verbosity_level`
+
+[horizontal]
+type:: integer
+default:: `2`
+
+Log verbosity level passed to the CCM via `--v=`.
+
+=== `ccm.node_selector`
+
+[horizontal]
+type:: dictionary
+default:: `{node-role.kubernetes.io/control-plane: ""}`
+
+Node selector for the CCM DaemonSet.
+
+=== `ccm.tolerations`
+
+[horizontal]
+type:: list
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Tolerations for the CCM DaemonSet.
+Defaults allow scheduling on control-plane nodes and on freshly-initialized nodes (`node.cloudprovider.kubernetes.io/uninitialized`).
+
+=== `ccm.service_monitor`
+
+[horizontal]
+type:: dictionary
+default::
++
+[source,yaml]
+----
+enabled: false
+additionalLabels: {}
+----
+
+Enables and configures a Prometheus Operator `ServiceMonitor` resource via the chart.
+
+=== `ccm.extra_volumes`
+
+[horizontal]
+type:: list
+default:: `[]`
+
+Extra volumes to attach to the CCM DaemonSet pod spec.
+
+=== `ccm.extra_volume_mounts`
+
+[horizontal]
+type:: list
+default:: `[]`
+
+Extra volume mounts for the CCM container, paired with `ccm.extra_volumes`.
+
+==== Mounting a custom CA certificate
+
+If the OpenStack API endpoint uses a custom CA, mount the certificate via `ccm.extra_volumes` / `ccm.extra_volume_mounts` and reference it from `cloud_conf.global.ca-file`:
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    cloud_conf:
+      global:
+        ca-file: /etc/cacert/ca.crt
+    ccm:
+      extra_volumes:
+        - name: ca-cert
+          secret:
+            secretName: openstack-ca-cert
+      extra_volume_mounts:
+        - name: ca-cert
+          mountPath: /etc/cacert
+          readOnly: true
+----
+
+=== `ccm.helm_values`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Escape hatch for any upstream CCM chart value not promoted to a top-level parameter.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/charts/openstack-cloud-controller-manager/values.yaml[upstream `values.yaml`] for the full list.
+
+NOTE: The component sets `secret.create: false` and manages the `cloud.conf` Secret itself via `cloud_conf`.
+Do not re-enable `secret.create`.
+
+== CSI parameters
+
+Parameters under the `csi` key configure the Cinder CSI driver.
+
+=== `csi.cluster_id`
+
+[horizontal]
+type:: string
+default:: `${cluster:name}`
+
+The cluster identifier passed to the CSI driver.
+
+=== `csi.fs_type`
+
+[horizontal]
+type:: string
+default:: `ext4`
+
+Default filesystem type for dynamically provisioned volumes.
+Set to `null` to omit `fsType` from StorageClass parameters.
+
+=== `csi.volume_binding_mode`
+
+[horizontal]
+type:: string
+default:: `WaitForFirstConsumer`
+
+The `volumeBindingMode` set on all StorageClasses created by this component.
+
+=== `csi.log_verbosity_level`
+
+[horizontal]
+type:: integer
+default:: `2`
+
+Log verbosity level for the CSI driver.
+
+=== `csi.pod_monitor`
+
+[horizontal]
+type:: dictionary
+default::
++
+[source,yaml]
+----
+enabled: false
+additionalLabels: {}
+----
+
+Enables and configures a Prometheus Operator `PodMonitor` for the CSI driver.
+
+=== `csi.node_driver_daemonset_tolerations`
+
+[horizontal]
+type:: list
+default:: `[{operator: Exists}]`
+
+Tolerations for the CSI node plugin DaemonSet.
+Defaults to tolerating everything so the node plugin runs on all nodes.
+
+NOTE: The CSI controller plugin Deployment is scheduled on control-plane nodes by default via `csi.helm_values`.
+Override `csi.helm_values.csi.plugin.controllerPlugin.nodeSelector` and `csi.helm_values.csi.plugin.controllerPlugin.tolerations` to change this.
+
+=== `csi.resources`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Resource requests and limits for all CSI containers, organized by `controller` and `node` sub-keys.
+
+=== `csi.storage_classes`
+
+[horizontal]
+type:: dictionary
+default:: `{}`
+
+StorageClass definitions.
+No storage classes are created by default; users must define all classes explicitly.
+
+The default StorageClass is managed cluster-wide via https://hub.syn.tools/storageclass/[component-storageclass] using `parameters.storageclass.defaultClass`.
+
+Each entry is keyed by the StorageClass name and supports:
+
+* `allow_volume_expansion` (boolean, default `true`)
+* `reclaim_policy` (`Delete` or `Retain`, default `Delete`)
+* `parameters` (dictionary) -- passed to the Cinder provisioner (e.g. `type: standard`)
+* `allowed_topologies` (list)
+
+[source,yaml]
+----
+parameters:
+  storageclass:
+    defaultClass: standard-delete
+
+  cloud_provider_openstack:
+    csi:
+      storage_classes:
+        standard-delete:
+          allow_volume_expansion: true
+          reclaim_policy: Delete
+          parameters:
+            type: standard
+        performance-retain:
+          allow_volume_expansion: true
+          reclaim_policy: Retain
+          parameters:
+            type: performance
+----
+
+=== `csi.volume_snapshot_classes`
+
+[horizontal]
+type:: dictionary
+default:: `{}`
+
+VolumeSnapshotClass definitions.
+
+Each entry supports:
+
+* `deletion_policy` (`Delete` or `Retain`)
+* `parameters` (dictionary) -- passed to the Cinder snapshotter
+
+NOTE: VolumeSnapshotClasses require the https://github.com/kubernetes-csi/external-snapshotter[snapshot CRDs and snapshot-controller] to be installed on the cluster.
+
+TIP: Set `force-create: "true"` in `parameters` to allow snapshots of in-use (attached) volumes.
+Without this, Cinder rejects snapshots unless the volume is detached.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    csi:
+      volume_snapshot_classes:
+        cinder-snapshot:
+          deletion_policy: Delete
+          parameters:
+            force-create: "true"
+----
+
+=== `csi.helm_values`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Escape hatch for any upstream Cinder CSI chart value not promoted to a top-level parameter.
+See the https://github.com/kubernetes/cloud-provider-openstack/blob/master/charts/openstack-cinder-csi/values.yaml[upstream `values.yaml`] for the full list.
+
+== Example
+
+Realistic configuration using application credentials, Octavia with OVN, Cinder StorageClasses, and monitoring:
+
+[source,yaml]
+----
+parameters:
+  storageclass:
+    defaultClass: standard-delete
+
+  cloud_provider_openstack:
+    cloud_conf:
+      global:
+        auth-url: https://identity.api.example.cloud/v3
+        region: zhw
+        application-credential-id: d1a2b3c4e5f6a7b8c9d0e1f2a3b4c5d6
+        application-credential-secret: '?{vaultkv:${cluster:tenant}/${cluster:name}/openstack/application-credential-secret}'
+      load_balancer:
+        manage-security-groups: true
+        lb-version: v2
+        lb-provider: ovn
+        lb-method: SOURCE_IP_PORT
+        floating-network-id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+      block_storage:
+        ignore-volume-az: false
+        trust-device-path: false
+        bs-version: auto
+      metadata:
+        search-order: configDrive
+
+    ccm:
+      service_monitor:
+        enabled: true
+
+    csi:
+      storage_classes:
+        standard-delete:
+          reclaim_policy: Delete
+          parameters:
+            type: standard
+        standard-retain:
+          reclaim_policy: Retain
+          parameters:
+            type: standard
+        performance-delete:
+          reclaim_policy: Delete
+          parameters:
+            type: performance
+      volume_snapshot_classes:
+        cinder-snapshot:
+          deletion_policy: Delete
+          parameters:
+            force-create: "true"
+      pod_monitor:
+        enabled: true
 ----

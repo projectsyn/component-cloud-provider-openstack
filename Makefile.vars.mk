@@ -5,7 +5,7 @@ git_dir         ?= $(shell git rev-parse --git-common-dir)
 compiled_path   ?= compiled/$(COMPONENT_NAME)/$(COMPONENT_NAME)
 root_volume     ?= -v "$${PWD}:/$(COMPONENT_NAME)"
 compiled_volume ?= -v "$${PWD}/$(compiled_path):/$(COMPONENT_NAME)"
-commodore_args  ?= --search-paths . -n $(COMPONENT_NAME)
+commodore_args  ?= --search-paths ./dependencies --search-paths . -n $(COMPONENT_NAME)
 
 ifneq "$(git_dir)" ".git"
 	git_volume        ?= -v "$(git_dir):$(git_dir):ro"
@@ -50,4 +50,4 @@ KUBENT_IMAGE    ?= ghcr.io/doitintl/kube-no-trouble:latest
 KUBENT_DOCKER   ?= $(DOCKER_CMD) $(DOCKER_ARGS) $(root_volume) --entrypoint=/app/kubent $(KUBENT_IMAGE)
 
 instance ?= defaults
-test_instances = tests/defaults.yml
+test_instances = tests/defaults.yml tests/cloud-config.yml

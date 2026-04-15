@@ -1,10 +1,37 @@
 parameters:
   kapitan:
+    dependencies:
+      - type: helm
+        source: ${cloud_provider_openstack:charts:openstack-cloud-controller-manager:source}
+        version: ${cloud_provider_openstack:charts:openstack-cloud-controller-manager:version}
+        chart_name: openstack-cloud-controller-manager
+        output_path: ${_base_directory}/helmcharts/openstack-cloud-controller-manager/${cloud_provider_openstack:charts:openstack-cloud-controller-manager:version}
+      - type: helm
+        source: ${cloud_provider_openstack:charts:openstack-cinder-csi:source}
+        version: ${cloud_provider_openstack:charts:openstack-cinder-csi:version}
+        chart_name: openstack-cinder-csi
+        output_path: ${_base_directory}/helmcharts/openstack-cinder-csi/${cloud_provider_openstack:charts:openstack-cinder-csi:version}
     compile:
       - input_paths:
           - ${_base_directory}/component/app.jsonnet
         input_type: jsonnet
         output_path: .
+      - input_paths:
+          - ${_base_directory}/helmcharts/openstack-cloud-controller-manager/${cloud_provider_openstack:charts:openstack-cloud-controller-manager:version}
+        input_type: helm
+        helm_values: ${cloud_provider_openstack:ccm:helm_values}
+        helm_params:
+          name: openstack-ccm
+          namespace: ${cloud_provider_openstack:namespace}
+        output_path: cloud-provider-openstack/10_ccm_helm_chart
+      - input_paths:
+          - ${_base_directory}/helmcharts/openstack-cinder-csi/${cloud_provider_openstack:charts:openstack-cinder-csi:version}
+        input_type: helm
+        helm_values: ${cloud_provider_openstack:csi:helm_values}
+        helm_params:
+          name: cinder-csi
+          namespace: ${cloud_provider_openstack:namespace}
+        output_path: cloud-provider-openstack/20_csi_helm_chart
       - input_paths:
           - ${_base_directory}/component/main.jsonnet
         input_type: jsonnet

@@ -1,5 +1,9 @@
-= Cloud Provider OpenStack
+= cloud-provider-openstack
 
-cloud-provider-openstack is a Commodore component to manage Cloud Provider OpenStack.
+cloud-provider-openstack is a Commodore component to manage the https://github.com/kubernetes/cloud-provider-openstack[OpenStack Cloud Controller Manager] (CCM) and https://github.com/kubernetes/cloud-provider-openstack[Cinder CSI driver].
+
+Both sub-components are enabled by default and share a single `cloud.conf` Secret.
+The CCM handles node initialization, node lifecycle, LoadBalancer Services (via Octavia), and optionally pod routes.
+The CSI driver provides persistent block storage using OpenStack Cinder volumes, with configurable StorageClasses and VolumeSnapshotClasses.
 
 See the xref:references/parameters.adoc[parameters] reference for further details.
