@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations: null
+  labels:
+    app: openstack-cinder-csi
+    chart: openstack-cinder-csi-2.35.0
+    component: nodeplugin
+    heritage: Helm
+    release: cinder-csi
+  name: openstack-cinder-csi-nodeplugin
+  namespace: syn-cloud-provider-openstack
+spec:
+  selector:
+    matchLabels:
+      app: openstack-cinder-csi
+      component: nodeplugin
+      release: cinder-csi
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app: openstack-cinder-csi
+        chart: openstack-cinder-csi-2.35.0
+        component: nodeplugin
+        heritage: Helm
+        release: cinder-csi
+    spec:
+      affinity: {}
+      containers:
+        - args:
+            - -v=2
+            - --csi-address=$(ADDRESS)
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/cinder.csi.openstack.org/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0
+          imagePullPolicy: IfNotPresent
+          name: node-driver-registrar
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /registration
+              name: registration-dir
+        - args:
+            - -v=2
+            - --csi-address=/csi/csi.sock
+          env: null
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.17.0
+          imagePullPolicy: IfNotPresent
+          name: liveness-probe
+          resources: {}
+          securityContext: {}
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+        - args:
+            - /bin/cinder-csi-plugin
+            - -v=2
+            - --endpoint=$(CSI_ENDPOINT)
+            - --provide-controller-service=false
+            - --cloud-config=$(CLOUD_CONFIG)
+          env:
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+          image: registry.k8s.io/provider-os/cinder-csi-plugin:v1.35.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            periodSeconds: 60
+            timeoutSeconds: 10
+          name: cinder-csi-plugin
+          ports:
+            - containerPort: 9808
+              name: healthz
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+            privileged: true
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /var/lib/kubelet
+              mountPropagation: Bidirectional
+              name: kubelet-dir
+            - mountPath: /dev
+              mountPropagation: HostToContainer
+              name: pods-probe-dir
+            - mountPath: /etc/config
+              name: cloud-config
+              readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      nodeSelector: {}
+      securityContext: {}
+      serviceAccount: csi-cinder-node-sa
+      tolerations:
+        - key: ''
+          operator: Exists
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/cinder.csi.openstack.org
+            type: DirectoryOrCreate
+          name: socket-dir
+        - hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+          name: registration-dir
+        - hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+          name: kubelet-dir
+        - hostPath:
+            path: /dev
+            type: Directory
+          name: pods-probe-dir
+        - name: cloud-config
+          secret:
+            secretName: cloud-config

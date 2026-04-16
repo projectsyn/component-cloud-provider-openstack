@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: openstack-ccm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openstack-cloud-controller-manager
+    app.kubernetes.io/version: v1.35.0
+    helm.sh/chart: openstack-cloud-controller-manager-2.35.0
+  name: openstack-cloud-controller-manager
+  namespace: syn-cloud-provider-openstack
+spec:
+  selector:
+    matchLabels:
+      app: openstack-cloud-controller-manager
+      component: controllermanager
+      release: openstack-ccm
+  template:
+    metadata:
+      annotations:
+        checksum/config: b0b31d6311d187dd53758033396c83505652c1ec8a62bef0b9afe7f9572f8db4
+      labels:
+        app: openstack-cloud-controller-manager
+        chart: openstack-cloud-controller-manager-2.35.0
+        component: controllermanager
+        heritage: Helm
+        release: openstack-ccm
+    spec:
+      containers:
+        - args:
+            - /bin/openstack-cloud-controller-manager
+            - --v=2
+            - --cloud-config=$(CLOUD_CONFIG)
+            - --cluster-name=$(CLUSTER_NAME)
+            - --cloud-provider=openstack
+            - --use-service-account-credentials=false
+            - --controllers=cloud-node,cloud-node-lifecycle,service
+            - --bind-address=127.0.0.1
+          env:
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+            - name: CLUSTER_NAME
+              value: c-green-test-1234
+          image: registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0
+          name: openstack-cloud-controller-manager
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - mountPath: /etc/config
+              name: cloud-config-volume
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ''
+      securityContext:
+        runAsUser: 1001
+      serviceAccountName: cloud-controller-manager
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+        - effect: NoSchedule
+          key: node.cloudprovider.kubernetes.io/uninitialized
+          value: 'true'
+      volumes:
+        - name: cloud-config-volume
+          secret:
+            secretName: cloud-config
+  updateStrategy:
+    type: RollingUpdate

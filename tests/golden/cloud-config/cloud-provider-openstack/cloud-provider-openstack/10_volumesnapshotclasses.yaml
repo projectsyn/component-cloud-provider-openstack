@@ -1,0 +1,11 @@
+apiVersion: snapshot.storage.k8s.io/v1
+deletionPolicy: Delete
+driver: cinder.csi.openstack.org
+kind: VolumeSnapshotClass
+metadata:
+  annotations: {}
+  labels:
+    name: cinder-snapshot
+  name: cinder-snapshot
+parameters:
+  force-create: 'true'

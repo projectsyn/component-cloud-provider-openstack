@@ -2,4 +2,168 @@ parameters:
   cloud_provider_openstack:
     =_metadata:
       multi_tenant: true
-    namespace: syn-cloud-provider-openstack
+    namespace:
+      name: syn-cloud-provider-openstack
+      labels: {}
+      annotations: {}
+
+    charts:
+      openstack-cloud-controller-manager:
+        source: https://kubernetes.github.io/cloud-provider-openstack
+        version: "2.35.0"
+      openstack-cinder-csi:
+        source: https://kubernetes.github.io/cloud-provider-openstack
+        version: "2.35.0"
+
+    images:
+      openstack_cloud_controller_manager:
+        registry: registry.k8s.io
+        repository: provider-os/openstack-cloud-controller-manager
+        tag: v1.35.0
+      cinder_csi_plugin:
+        registry: registry.k8s.io
+        repository: provider-os/cinder-csi-plugin
+        tag: v1.35.0
+
+    cloud_config_secret_name: cloud-config
+
+    cloud_conf:
+      global: {}
+      networking: {}
+      load_balancer: {}
+      load_balancer_classes: {}
+      block_storage: {}
+      metadata: {}
+      route: {}
+
+    ccm:
+      enabled: true
+      cluster_name: ${cluster:name}
+      service_account_name: cloud-controller-manager
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      enabled_controllers:
+        - cloud-node
+        - cloud-node-lifecycle
+        - service
+      log_verbosity_level: 2
+      node_selector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        node.cloudprovider.kubernetes.io/uninitialized:
+          value: "true"
+          effect: NoSchedule
+        node-role.kubernetes.io/control-plane:
+          effect: NoSchedule
+      service_monitor:
+        enabled: false
+        additionalLabels: {}
+      extra_volumes: []
+      extra_volume_mounts: []
+      helm_values:
+        secret:
+          enabled: true
+          create: false
+          name: ${cloud_provider_openstack:cloud_config_secret_name}
+        cluster:
+          name: ${cloud_provider_openstack:ccm:cluster_name}
+        serviceAccountName: ${cloud_provider_openstack:ccm:service_account_name}
+        image:
+          repository: ${cloud_provider_openstack:images:openstack_cloud_controller_manager:registry}/${cloud_provider_openstack:images:openstack_cloud_controller_manager:repository}
+          tag: ${cloud_provider_openstack:images:openstack_cloud_controller_manager:tag}
+        resources: ${cloud_provider_openstack:ccm:resources}
+        logVerbosityLevel: ${cloud_provider_openstack:ccm:log_verbosity_level}
+        nodeSelector: ${cloud_provider_openstack:ccm:node_selector}
+        serviceMonitor: ${cloud_provider_openstack:ccm:service_monitor}
+        extraVolumes: ${cloud_provider_openstack:ccm:extra_volumes}
+        extraVolumeMounts: ${cloud_provider_openstack:ccm:extra_volume_mounts}
+
+    csi:
+      enabled: true
+      cluster_id: ${cluster:name}
+      fs_type: ext4
+      volume_binding_mode: WaitForFirstConsumer
+      log_verbosity_level: 2
+      pod_monitor:
+        enabled: false
+        additionalLabels: {}
+      controller_plugin:
+        node_selector:
+          node-role.kubernetes.io/control-plane: ""
+        tolerations:
+          node-role.kubernetes.io/control-plane:
+            effect: NoSchedule
+      node_plugin:
+        tolerations:
+          "":
+            operator: Exists
+      resources:
+        controller:
+          csi-provisioner:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          csi-attacher:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          csi-resizer:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          csi-snapshotter:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          cinder-csi-plugin:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+        node:
+          node-driver-registrar:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          cinder-csi-plugin:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+      storage_classes: {}
+      volume_snapshot_classes: {}
+      helm_values:
+        secret:
+          enabled: true
+          create: false
+          hostMount: false
+          name: ${cloud_provider_openstack:cloud_config_secret_name}
+        clusterID: ${cloud_provider_openstack:csi:cluster_id}
+        logVerbosityLevel: ${cloud_provider_openstack:csi:log_verbosity_level}
+        storageClass:
+          enabled: false
+        csi:
+          provisioner:
+            resources: ${cloud_provider_openstack:csi:resources:controller:csi-provisioner}
+          attacher:
+            resources: ${cloud_provider_openstack:csi:resources:controller:csi-attacher}
+          resizer:
+            resources: ${cloud_provider_openstack:csi:resources:controller:csi-resizer}
+          snapshotter:
+            resources: ${cloud_provider_openstack:csi:resources:controller:csi-snapshotter}
+          nodeDriverRegistrar:
+            resources: ${cloud_provider_openstack:csi:resources:node:node-driver-registrar}
+          plugin:
+            image:
+              repository: ${cloud_provider_openstack:images:cinder_csi_plugin:registry}/${cloud_provider_openstack:images:cinder_csi_plugin:repository}
+              tag: ${cloud_provider_openstack:images:cinder_csi_plugin:tag}
+            volumes: []
+            volumeMounts:
+              - name: cloud-config
+                mountPath: /etc/config
+                readOnly: true
+            resources: ${cloud_provider_openstack:csi:resources:controller:cinder-csi-plugin}
+            httpEndpoint:
+              enabled: ${cloud_provider_openstack:csi:pod_monitor:enabled}
+              port: 8080
+            podMonitor: ${cloud_provider_openstack:csi:pod_monitor}

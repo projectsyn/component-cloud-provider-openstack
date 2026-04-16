@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: openstack-ccm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openstack-cloud-controller-manager
+    app.kubernetes.io/version: v1.35.0
+    helm.sh/chart: openstack-cloud-controller-manager-2.35.0
+  name: openstack-cloud-controller-manager
+  namespace: syn-cloud-provider-openstack
+spec:
+  endpoints:
+    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      interval: 30s
+      port: http
+      scheme: https
+      tlsConfig:
+        insecureSkipVerify: true
+  jobLabel: component
+  selector:
+    matchLabels:
+      app: openstack-cloud-controller-manager
+      component: controllermanager
+      release: openstack-ccm

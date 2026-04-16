@@ -1,0 +1,55 @@
+parameters:
+  kapitan:
+    dependencies:
+      - type: https
+        source: https://raw.githubusercontent.com/projectsyn/component-storageclass/v1.0.0/lib/storageclass.libsonnet
+        output_path: vendor/lib/storageclass.libsonnet
+
+  storageclass:
+    defaultClass: standard-delete
+    defaults: {}
+
+  cloud_provider_openstack:
+    cloud_conf:
+      global:
+        auth-url: https://identity.api.example.cloud/v3
+        region: zhw
+        application-credential-id: d1a2b3c4e5f6a7b8c9d0e1f2a3b4c5d6
+        application-credential-secret: verysecretsecret
+      block_storage:
+        ignore-volume-az: false
+        trust-device-path: false
+        bs-version: auto
+      load_balancer:
+        manage-security-groups: true
+        lb-version: v2
+        lb-provider: ovn
+        subnet-id: ""
+        floating-network-id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        lb-method: SOURCE_IP_PORT
+      metadata:
+        search-order: configDrive
+
+    ccm:
+      service_monitor:
+        enabled: true
+
+    csi:
+      storage_classes:
+        standard-delete:
+          reclaim_policy: Delete
+          parameters:
+            type: standard
+        standard-retain:
+          reclaim_policy: Retain
+          parameters:
+            type: standard
+
+      volume_snapshot_classes:
+        cinder-snapshot:
+          deletion_policy: Delete
+          parameters:
+            force-create: "true"
+
+      pod_monitor:
+        enabled: true

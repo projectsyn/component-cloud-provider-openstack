@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: openstack-ccm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openstack-cloud-controller-manager
+    app.kubernetes.io/version: v1.35.0
+    helm.sh/chart: openstack-cloud-controller-manager-2.35.0
+  name: openstack-cloud-controller-manager
+  namespace: syn-cloud-provider-openstack
+spec:
+  ports:
+    - name: http
+      port: 10258
+      protocol: TCP
+  selector:
+    app: openstack-cloud-controller-manager
+    component: controllermanager
+    release: openstack-ccm

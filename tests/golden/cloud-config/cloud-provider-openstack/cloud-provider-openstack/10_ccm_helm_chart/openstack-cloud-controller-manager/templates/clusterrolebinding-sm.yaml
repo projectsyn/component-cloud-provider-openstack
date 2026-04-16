@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: openstack-ccm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openstack-cloud-controller-manager
+    app.kubernetes.io/version: v1.35.0
+    helm.sh/chart: openstack-cloud-controller-manager-2.35.0
+  name: system:openstack-cloud-controller-manager:auth-delegate
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: system:serviceaccount:syn-cloud-provider-openstack:cloud-controller-manager

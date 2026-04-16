@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  annotations: null
+  labels:
+    app: openstack-cinder-csi
+    chart: openstack-cinder-csi-2.35.0
+    component: controllerplugin
+    heritage: Helm
+    release: cinder-csi
+  name: openstack-cinder-csi-controllerplugin
+  namespace: syn-cloud-provider-openstack
+spec:
+  jobLabel: component
+  podMetricsEndpoints:
+    - interval: 30s
+      port: http
+      scheme: http
+  selector:
+    matchLabels:
+      app: openstack-cinder-csi
+      component: controllerplugin
+      release: cinder-csi
