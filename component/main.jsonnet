@@ -9,10 +9,10 @@ local renderValue(k, v) =
   if v == null then []
   else if std.isArray(v) then
     [ '%s=%s' % [ k, item ] for item in v if item != null ]
-  else if std.isBoolean(v) then
-    [ '%s=%s' % [ k, if v then 'true' else 'false' ] ]
+  else if std.isObject(v) then
+    error 'cloud_conf value for key "%s" must be scalar or array, got object' % k
   else
-    [ '%s=%s' % [ k, std.toString(v) ] ];
+    [ '%s=%s' % [ k, v ] ];
 
 local renderSection(name, dict) =
   local lines = std.flattenArrays(
@@ -42,7 +42,7 @@ local renderCloudConf() =
 
 local secret = kube.Secret(params.cloud_config_secret_name) {
   metadata+: {
-    namespace: params.namespace,
+    namespace: params.namespace.name,
   },
   data:: {},
   stringData: {
@@ -74,17 +74,32 @@ local storageClasses = [
 
 local volumeSnapshotClasses = [
   local vsc = params.csi.volume_snapshot_classes[name];
+  local vscParams = std.get(vsc, 'parameters', {});
   kube._Object('snapshot.storage.k8s.io/v1', 'VolumeSnapshotClass', name) {
     driver: 'cinder.csi.openstack.org',
     deletionPolicy: vsc.deletion_policy,
-    [if std.length(vsc.parameters) > 0 then 'parameters']: vsc.parameters,
+    [if std.length(vscParams) > 0 then 'parameters']: vscParams,
   }
   for name in std.objectFields(params.csi.volume_snapshot_classes)
 ];
 
+local namespace = kube.Namespace(params.namespace.name) {
+  metadata+: {
+    labels+: {
+      [k]: params.namespace.labels[k]
+      for k in std.objectFields(params.namespace.labels)
+      if params.namespace.labels[k] != null
+    },
+    annotations+: {
+      [k]: params.namespace.annotations[k]
+      for k in std.objectFields(params.namespace.annotations)
+      if params.namespace.annotations[k] != null
+    },
+  },
+};
+
 {
-  [if params.namespace != 'kube-system' then '00_namespace']:
-    kube.Namespace(params.namespace),
+  [if params.namespace.name != 'kube-system' then '00_namespace']: namespace,
   '01_secret': secret,
   [if std.length(params.csi.storage_classes) > 0 then '10_storageclasses']:
     storageClasses,

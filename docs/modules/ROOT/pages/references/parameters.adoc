@@ -5,14 +5,48 @@ The parent key for all of the following parameters is `cloud_provider_openstack`
 == `namespace`
 
 [horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Configures the namespace in which to deploy this component.
+
+=== `namespace.name`
+
+[horizontal]
 type:: string
 default:: `syn-cloud-provider-openstack`
 
-The namespace in which to deploy this component.
-Unless `kube-system` is chosen, the component will take ownership of the namespace.
+The namespace name.
 
-NOTE: The CCM DaemonSet uses `hostNetwork: true`.
-On clusters that enforce https://kubernetes.io/docs/concepts/security/pod-security-standards/[Pod Security Standards], the namespace must be labeled `pod-security.kubernetes.io/enforce: privileged`.
+=== `namespace.labels`
+
+[horizontal]
+type:: dictionary
+default:: `{}`
+
+Labels applied to the namespace when the component owns it (i.e. `namespace.name != kube-system`).
+Entries with value `null` (or `~`) are dropped, letting hierarchy overrides remove defaults set in a parent class.
+
+IMPORTANT: Both the CCM DaemonSet (`hostNetwork: true`) and the CSI node plugin (`privileged: true`, `SYS_ADMIN`, hostPath volumes for kubelet/registration/socket dirs) require the `privileged` Pod Security Standard.
+On clusters that enforce https://kubernetes.io/docs/concepts/security/pod-security-standards/[Pod Security Standards], set `pod-security.kubernetes.io/enforce: privileged` here or label the namespace externally, otherwise the pods will be rejected by the admission webhook.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    namespace:
+      labels:
+        pod-security.kubernetes.io/enforce: privileged
+----
+
+=== `namespace.annotations`
+
+[horizontal]
+type:: dictionary
+default:: `{}`
+
+Annotations applied to the namespace when the component owns it (i.e. `namespace.name != kube-system`).
+Entries with value `null` (or `~`) are dropped.
 
 == `charts`
 
@@ -211,6 +245,14 @@ parameters:
 
 Parameters under the `ccm` key configure the OpenStack Cloud Controller Manager.
 
+=== `ccm.enabled`
+
+[horizontal]
+type:: boolean
+default:: `true`
+
+When `false`, the CCM chart output is skipped entirely.
+
 === `ccm.cluster_name`
 
 [horizontal]
@@ -243,6 +285,17 @@ type:: list
 default:: `[cloud-node, cloud-node-lifecycle, service]`
 
 List of CCM sub-controllers to enable.
+The list is processed with `com.renderArray()`, so entries prefixed with `~` are removed.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    ccm:
+      enabled_controllers:
+        - ~service   # drop the service controller
+        - route      # add the route controller
+----
 
 [cols="2,5,1"]
 |===
@@ -284,11 +337,23 @@ Node selector for the CCM DaemonSet.
 === `ccm.tolerations`
 
 [horizontal]
-type:: list
+type:: dictionary
 default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
 
-Tolerations for the CCM DaemonSet.
+Tolerations for the CCM DaemonSet, keyed by toleration key.
 Defaults allow scheduling on control-plane nodes and on freshly-initialized nodes (`node.cloudprovider.kubernetes.io/uninitialized`).
+Set an entry to `null` (or `~`) to drop it via hierarchy merge.
+
+[source,yaml]
+----
+parameters:
+  cloud_provider_openstack:
+    ccm:
+      tolerations:
+        node-role.kubernetes.io/control-plane:
+          effect: NoSchedule
+        node.cloudprovider.kubernetes.io/uninitialized: ~
+----
 
 === `ccm.service_monitor`
 
@@ -358,6 +423,14 @@ Do not re-enable `secret.create`.
 
 Parameters under the `csi` key configure the Cinder CSI driver.
 
+=== `csi.enabled`
+
+[horizontal]
+type:: boolean
+default:: `true`
+
+When `false`, the CSI chart output is skipped entirely.
+
 === `csi.cluster_id`
 
 [horizontal]
@@ -405,17 +478,23 @@ additionalLabels: {}
 
 Enables and configures a Prometheus Operator `PodMonitor` for the CSI driver.
 
-=== `csi.node_driver_daemonset_tolerations`
+=== `csi.controller_plugin`
 
 [horizontal]
-type:: list
-default:: `[{operator: Exists}]`
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
 
-Tolerations for the CSI node plugin DaemonSet.
-Defaults to tolerating everything so the node plugin runs on all nodes.
+Scheduling config for the CSI controller plugin Deployment.
+`node_selector` and `tolerations` are maps keyed by selector/toleration key; entries can be disabled by setting their value to `null`.
 
-NOTE: The CSI controller plugin Deployment is scheduled on control-plane nodes by default via `csi.helm_values`.
-Override `csi.helm_values.csi.plugin.controllerPlugin.nodeSelector` and `csi.helm_values.csi.plugin.controllerPlugin.tolerations` to change this.
+=== `csi.node_plugin`
+
+[horizontal]
+type:: dictionary
+default:: https://github.com/projectsyn/component-cloud-provider-openstack/blob/master/class/defaults.yml[See `class/defaults.yml`]
+
+Scheduling config for the CSI node plugin DaemonSet.
+`tolerations` is a map keyed by toleration key; an empty key (`""`) with `operator: Exists` tolerates all taints.
 
 === `csi.resources`
 
@@ -474,8 +553,8 @@ VolumeSnapshotClass definitions.
 
 Each entry supports:
 
-* `deletion_policy` (`Delete` or `Retain`)
-* `parameters` (dictionary) -- passed to the Cinder snapshotter
+* `deletion_policy` (`Delete` or `Retain`) -- *required*
+* `parameters` (dictionary, optional) -- passed to the Cinder snapshotter
 
 NOTE: VolumeSnapshotClasses require the https://github.com/kubernetes-csi/external-snapshotter[snapshot CRDs and snapshot-controller] to be installed on the cluster.
 

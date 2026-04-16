@@ -2,7 +2,10 @@ parameters:
   cloud_provider_openstack:
     =_metadata:
       multi_tenant: true
-    namespace: syn-cloud-provider-openstack
+    namespace:
+      name: syn-cloud-provider-openstack
+      labels: {}
+      annotations: {}
 
     charts:
       openstack-cloud-controller-manager:
@@ -34,6 +37,7 @@ parameters:
       route: {}
 
     ccm:
+      enabled: true
       cluster_name: ${cluster:name}
       service_account_name: cloud-controller-manager
       resources:
@@ -48,10 +52,10 @@ parameters:
       node_selector:
         node-role.kubernetes.io/control-plane: ""
       tolerations:
-        - key: node.cloudprovider.kubernetes.io/uninitialized
+        node.cloudprovider.kubernetes.io/uninitialized:
           value: "true"
           effect: NoSchedule
-        - key: node-role.kubernetes.io/control-plane
+        node-role.kubernetes.io/control-plane:
           effect: NoSchedule
       service_monitor:
         enabled: false
@@ -70,15 +74,14 @@ parameters:
           repository: ${cloud_provider_openstack:images:openstack_cloud_controller_manager:registry}/${cloud_provider_openstack:images:openstack_cloud_controller_manager:repository}
           tag: ${cloud_provider_openstack:images:openstack_cloud_controller_manager:tag}
         resources: ${cloud_provider_openstack:ccm:resources}
-        enabledControllers: ${cloud_provider_openstack:ccm:enabled_controllers}
         logVerbosityLevel: ${cloud_provider_openstack:ccm:log_verbosity_level}
         nodeSelector: ${cloud_provider_openstack:ccm:node_selector}
-        tolerations: ${cloud_provider_openstack:ccm:tolerations}
         serviceMonitor: ${cloud_provider_openstack:ccm:service_monitor}
         extraVolumes: ${cloud_provider_openstack:ccm:extra_volumes}
         extraVolumeMounts: ${cloud_provider_openstack:ccm:extra_volume_mounts}
 
     csi:
+      enabled: true
       cluster_id: ${cluster:name}
       fs_type: ext4
       volume_binding_mode: WaitForFirstConsumer
@@ -86,8 +89,16 @@ parameters:
       pod_monitor:
         enabled: false
         additionalLabels: {}
-      node_driver_daemonset_tolerations:
-        - operator: Exists
+      controller_plugin:
+        node_selector:
+          node-role.kubernetes.io/control-plane: ""
+        tolerations:
+          node-role.kubernetes.io/control-plane:
+            effect: NoSchedule
+      node_plugin:
+        tolerations:
+          "":
+            operator: Exists
       resources:
         controller:
           csi-provisioner:
@@ -155,12 +166,4 @@ parameters:
             httpEndpoint:
               enabled: ${cloud_provider_openstack:csi:pod_monitor:enabled}
               port: 8080
-            controllerPlugin:
-              nodeSelector:
-                node-role.kubernetes.io/control-plane: ""
-              tolerations:
-                - key: node-role.kubernetes.io/control-plane
-                  effect: NoSchedule
-            nodePlugin:
-              tolerations: ${cloud_provider_openstack:csi:node_driver_daemonset_tolerations}
             podMonitor: ${cloud_provider_openstack:csi:pod_monitor}

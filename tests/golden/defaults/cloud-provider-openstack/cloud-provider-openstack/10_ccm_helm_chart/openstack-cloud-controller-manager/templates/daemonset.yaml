@@ -61,10 +61,10 @@ spec:
       serviceAccountName: cloud-controller-manager
       tolerations:
         - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+        - effect: NoSchedule
           key: node.cloudprovider.kubernetes.io/uninitialized
           value: 'true'
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/control-plane
       volumes:
         - name: cloud-config-volume
           secret:

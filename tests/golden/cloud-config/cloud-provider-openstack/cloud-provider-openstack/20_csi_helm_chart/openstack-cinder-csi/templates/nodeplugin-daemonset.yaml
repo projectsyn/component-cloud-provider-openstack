@@ -120,7 +120,8 @@ spec:
       securityContext: {}
       serviceAccount: csi-cinder-node-sa
       tolerations:
-        - operator: Exists
+        - key: ''
+          operator: Exists
       volumes:
         - hostPath:
             path: /var/lib/kubelet/plugins/cinder.csi.openstack.org

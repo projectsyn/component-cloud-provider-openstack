@@ -81,4 +81,4 @@ $(test_instances):
 
 .PHONY: clean
 clean: ## Clean the project
-	rm -rf .cache compiled dependencies vendor helmcharts jsonnetfile*.json || true
+	rm -rf .cache compiled dependencies vendor helmcharts helm_values jsonnetfile*.json || true

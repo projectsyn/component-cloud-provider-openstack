@@ -7,3 +7,5 @@ metadata:
   labels:
     name: cinder-snapshot
   name: cinder-snapshot
+parameters:
+  force-create: 'true'
