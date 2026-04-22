@@ -3,7 +3,7 @@ local inv = kap.inventory();
 local params = inv.parameters.cloud_provider_openstack;
 local argocd = import 'lib/argocd.libjsonnet';
 
-local app = argocd.App('cloud-provider-openstack', params.namespace);
+local app = argocd.App('cloud-provider-openstack', params.namespace.name);
 
 local appPath =
   local project = std.get(std.get(app, 'spec', {}), 'project', 'syn');
