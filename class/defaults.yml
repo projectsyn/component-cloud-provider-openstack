@@ -10,10 +10,10 @@ parameters:
     charts:
       openstack-cloud-controller-manager:
         source: https://kubernetes.github.io/cloud-provider-openstack
-        version: "2.35.0"
+        version: "2.36.0"
       openstack-cinder-csi:
         source: https://kubernetes.github.io/cloud-provider-openstack
-        version: "2.35.0"
+        version: "2.36.0"
 
     images:
       openstack_cloud_controller_manager:

@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: openstack-ccm
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openstack-cloud-controller-manager
-    app.kubernetes.io/version: v1.35.0
-    helm.sh/chart: openstack-cloud-controller-manager-2.35.0
+    app.kubernetes.io/version: v1.36.0
+    helm.sh/chart: openstack-cloud-controller-manager-2.36.0
   name: system:cloud-controller-manager
 rules:
   - apiGroups:

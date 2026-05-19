@@ -4,7 +4,7 @@ metadata:
   annotations: null
   labels:
     app: openstack-cinder-csi
-    chart: openstack-cinder-csi-2.35.0
+    chart: openstack-cinder-csi-2.36.0
     component: nodeplugin
     heritage: Helm
     release: cinder-csi
@@ -21,7 +21,7 @@ spec:
       annotations: null
       labels:
         app: openstack-cinder-csi
-        chart: openstack-cinder-csi-2.35.0
+        chart: openstack-cinder-csi-2.36.0
         component: nodeplugin
         heritage: Helm
         release: cinder-csi
