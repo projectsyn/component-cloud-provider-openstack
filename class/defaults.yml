@@ -19,7 +19,7 @@ parameters:
       openstack_cloud_controller_manager:
         registry: registry.k8s.io
         repository: provider-os/openstack-cloud-controller-manager
-        tag: v1.35.0
+        tag: v1.36.0
       cinder_csi_plugin:
         registry: registry.k8s.io
         repository: provider-os/cinder-csi-plugin
