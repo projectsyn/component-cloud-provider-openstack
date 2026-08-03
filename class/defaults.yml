@@ -13,7 +13,7 @@ parameters:
         version: "2.36.1"
       openstack-cinder-csi:
         source: https://kubernetes.github.io/cloud-provider-openstack
-        version: "2.36.0"
+        version: "2.36.2"
 
     images:
       openstack_cloud_controller_manager:
