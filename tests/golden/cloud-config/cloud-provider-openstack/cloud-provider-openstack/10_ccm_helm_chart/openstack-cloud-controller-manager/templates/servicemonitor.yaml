@@ -7,13 +7,12 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openstack-cloud-controller-manager
     app.kubernetes.io/version: v1.36.0
-    helm.sh/chart: openstack-cloud-controller-manager-2.36.1
+    helm.sh/chart: openstack-cloud-controller-manager-2.36.3
   name: openstack-cloud-controller-manager
   namespace: syn-cloud-provider-openstack
 spec:
   endpoints:
-    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      interval: 30s
+    - interval: 30s
       port: http
       scheme: https
       tlsConfig:
@@ -21,6 +20,8 @@ spec:
   jobLabel: component
   selector:
     matchLabels:
-      app: openstack-cloud-controller-manager
-      component: controllermanager
-      release: openstack-ccm
+      app.kubernetes.io/instance: openstack-ccm
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: openstack-cloud-controller-manager
+      app.kubernetes.io/version: v1.36.0
+      helm.sh/chart: openstack-cloud-controller-manager-2.36.3
