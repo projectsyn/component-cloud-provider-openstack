@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openstack-cloud-controller-manager
     app.kubernetes.io/version: v1.36.0
-    helm.sh/chart: openstack-cloud-controller-manager-2.36.1
+    helm.sh/chart: openstack-cloud-controller-manager-2.36.3
   name: system:cloud-controller-manager
 rules:
   - apiGroups:
@@ -31,7 +31,11 @@ rules:
     resources:
       - nodes
     verbs:
-      - '*'
+      - get
+      - list
+      - watch
+      - patch
+      - update
   - apiGroups:
       - ''
     resources:
@@ -69,12 +73,6 @@ rules:
   - apiGroups:
       - ''
     resources:
-      - persistentvolumes
-    verbs:
-      - '*'
-  - apiGroups:
-      - ''
-    resources:
       - endpoints
     verbs:
       - create
@@ -89,12 +87,4 @@ rules:
     verbs:
       - get
       - list
-      - watch
-  - apiGroups:
-      - ''
-    resources:
-      - secrets
-    verbs:
-      - list
-      - get
       - watch
