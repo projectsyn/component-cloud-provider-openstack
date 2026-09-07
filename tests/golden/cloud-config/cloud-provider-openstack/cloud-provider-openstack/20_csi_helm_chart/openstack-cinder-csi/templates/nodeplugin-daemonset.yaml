@@ -4,7 +4,7 @@ metadata:
   annotations: null
   labels:
     app: openstack-cinder-csi
-    chart: openstack-cinder-csi-2.36.2
+    chart: openstack-cinder-csi-2.36.3
     component: nodeplugin
     heritage: Helm
     release: cinder-csi
@@ -21,7 +21,7 @@ spec:
       annotations: null
       labels:
         app: openstack-cinder-csi
-        chart: openstack-cinder-csi-2.36.2
+        chart: openstack-cinder-csi-2.36.3
         component: nodeplugin
         heritage: Helm
         release: cinder-csi
@@ -72,6 +72,7 @@ spec:
             - --endpoint=$(CSI_ENDPOINT)
             - --provide-controller-service=false
             - --cloud-config=$(CLOUD_CONFIG)
+            - --with-topology=true
           env:
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock

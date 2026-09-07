@@ -4,7 +4,7 @@ metadata:
   annotations: null
   labels:
     app: openstack-cinder-csi
-    chart: openstack-cinder-csi-2.36.2
+    chart: openstack-cinder-csi-2.36.3
     component: controllerplugin
     heritage: Helm
     release: cinder-csi
@@ -27,7 +27,7 @@ spec:
       annotations: null
       labels:
         app: openstack-cinder-csi
-        chart: openstack-cinder-csi-2.36.2
+        chart: openstack-cinder-csi-2.36.3
         component: controllerplugin
         heritage: Helm
         release: cinder-csi
@@ -60,7 +60,6 @@ spec:
             - --timeout=3m
             - --leader-election=true
             - --default-fstype=ext4
-            - --feature-gates=Topology=true
             - --extra-create-metadata
           env:
             - name: ADDRESS
@@ -136,6 +135,7 @@ spec:
             - --cloud-config=$(CLOUD_CONFIG)
             - --cluster=$(CLUSTER_NAME)
             - --provide-node-service=false
+            - --with-topology=true
           env:
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
