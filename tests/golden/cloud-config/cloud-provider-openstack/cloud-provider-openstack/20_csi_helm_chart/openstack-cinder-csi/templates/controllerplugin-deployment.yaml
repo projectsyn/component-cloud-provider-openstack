@@ -4,7 +4,7 @@ metadata:
   annotations: null
   labels:
     app: openstack-cinder-csi
-    chart: openstack-cinder-csi-2.36.3
+    chart: openstack-cinder-csi-2.36.4
     component: controllerplugin
     heritage: Helm
     release: cinder-csi
@@ -27,7 +27,7 @@ spec:
       annotations: null
       labels:
         app: openstack-cinder-csi
-        chart: openstack-cinder-csi-2.36.3
+        chart: openstack-cinder-csi-2.36.4
         component: controllerplugin
         heritage: Helm
         release: cinder-csi
@@ -50,7 +50,10 @@ spec:
             requests:
               cpu: 20m
               memory: 32Mi
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
@@ -71,7 +74,10 @@ spec:
             requests:
               cpu: 20m
               memory: 32Mi
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
@@ -90,7 +96,10 @@ spec:
             requests:
               cpu: 20m
               memory: 32Mi
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
@@ -110,7 +119,10 @@ spec:
             requests:
               cpu: 20m
               memory: 32Mi
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
@@ -124,7 +136,10 @@ spec:
           imagePullPolicy: IfNotPresent
           name: liveness-probe
           resources: {}
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
@@ -166,7 +181,10 @@ spec:
             requests:
               cpu: 20m
               memory: 64Mi
-          securityContext: {}
+          securityContext:
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
@@ -175,6 +193,7 @@ spec:
               readOnly: true
       nodeSelector:
         node-role.kubernetes.io/control-plane: ''
+      priorityClassName: system-cluster-critical
       securityContext: {}
       serviceAccount: csi-cinder-controller-sa
       tolerations:
