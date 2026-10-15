@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/instance: openstack-ccm
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openstack-cloud-controller-manager
-    app.kubernetes.io/version: v1.36.0
-    helm.sh/chart: openstack-cloud-controller-manager-2.36.4
+    app.kubernetes.io/version: v1.37.1
+    helm.sh/chart: openstack-cloud-controller-manager-2.37.1
   name: openstack-cloud-controller-manager
   namespace: syn-cloud-provider-openstack
 spec:
@@ -21,7 +21,4 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: openstack-ccm
-      app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/name: openstack-cloud-controller-manager
-      app.kubernetes.io/version: v1.36.0
-      helm.sh/chart: openstack-cloud-controller-manager-2.36.4
