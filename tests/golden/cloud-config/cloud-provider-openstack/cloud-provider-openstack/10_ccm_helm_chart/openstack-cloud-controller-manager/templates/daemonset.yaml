@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: openstack-cloud-controller-manager
     app.kubernetes.io/version: v1.36.0
-    helm.sh/chart: openstack-cloud-controller-manager-2.36.4
+    helm.sh/chart: openstack-cloud-controller-manager-2.36.5
   name: openstack-cloud-controller-manager
   namespace: syn-cloud-provider-openstack
 spec:
@@ -22,7 +22,7 @@ spec:
         checksum/config: b0b31d6311d187dd53758033396c83505652c1ec8a62bef0b9afe7f9572f8db4
       labels:
         app: openstack-cloud-controller-manager
-        chart: openstack-cloud-controller-manager-2.36.4
+        chart: openstack-cloud-controller-manager-2.36.5
         component: controllermanager
         heritage: Helm
         release: openstack-ccm
@@ -54,6 +54,15 @@ spec:
             requests:
               cpu: 50m
               memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /etc/config
               name: cloud-config-volume
@@ -62,8 +71,11 @@ spec:
       hostNetwork: true
       nodeSelector:
         node-role.kubernetes.io/control-plane: ''
+      priorityClassName: system-node-critical
       securityContext:
         runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: cloud-controller-manager
       tolerations:
         - effect: NoSchedule
